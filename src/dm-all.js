@@ -25,7 +25,12 @@ export async function dmAllMembers(guild, message, onProgress) {
     }
 
     try {
-      await member.send(message);
+      const name =
+        member.displayName ||
+        member.user.globalName ||
+        member.user.username;
+      const personalized = `Hi, ${name},\n\n${message}`.slice(0, 2000);
+      await member.send(personalized);
       result.sent += 1;
     } catch {
       // Common when the user has DMs disabled or has blocked the bot

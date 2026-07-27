@@ -58,14 +58,28 @@ client.on("interactionCreate", async (interaction) => {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
+    let channelNote = null;
     if (channel?.isTextBased()) {
-      await channel.send({
-        content: `📢 Broadcast started by ${interaction.user}:\n${message}`,
-      });
+      try {
+        await channel.send({
+          content: `📢 Broadcast started by ${interaction.user}:\n${message}`,
+        });
+        channelNote = `• Also posted in: ${channel}`;
+      } catch (channelErr) {
+        console.warn("Channel announce failed:", channelErr);
+        channelNote =
+          `• Could not post in ${channel} (bot needs **View Channel** + **Send Messages** there)`;
+      }
+    }
+
+    const me = interaction.guild.members.me;
+    if (me && !me.permissions.has(PermissionFlagsBits.ViewChannel)) {
+      throw new Error(
+        "Bot cannot view channels in this server. Re-invite it or fix role permissions."
+      );
     }
 
     const result = await dmAllMembers(interaction.guild, message, (progress) => {
-      // Progress is logged; Discord ephemeral edits are rate-limited
       if (progress.attempted % 10 === 0 || progress.done) {
         console.log(
           `[${interaction.guild.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.skipped} skipped / ${progress.total}`
@@ -80,15 +94,20 @@ client.on("interactionCreate", async (interaction) => {
         `• Sent: **${result.sent}**`,
         `• Failed (DMs closed / blocked / rate limit): **${result.failed}**`,
         `• Skipped (bots): **${result.skipped}**`,
-        channel ? `• Also posted in: ${channel}` : null,
+        channelNote,
       ]
         .filter(Boolean)
         .join("\n"),
     });
   } catch (err) {
     console.error(err);
+    const detail = err.message ?? String(err);
+    const hint =
+      detail.includes("Missing Permissions") || err.code === 50013
+        ? "\n\nFix in **Wave**: Server Settings → Roles → move the **maza** bot role up, allow **View Channels** / **Send Messages**. Or re-invite:\nhttps://discord.com/oauth2/authorize?client_id=1530253022557638778&permissions=269486112&scope=bot%20applications.commands\n\nThen try `/dmall` **without** the channel option first."
+        : "";
     await interaction.editReply({
-      content: `Broadcast failed: ${err.message ?? String(err)}`,
+      content: `Broadcast failed: ${detail}${hint}`,
     });
   }
 });
