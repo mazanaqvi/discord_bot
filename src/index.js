@@ -54,6 +54,7 @@ client.on("interactionCreate", async (interaction) => {
 
   const message = interaction.options.getString("message", true);
   const channel = interaction.options.getChannel("channel");
+  const reset = interaction.options.getBoolean("reset") ?? false;
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -79,23 +80,31 @@ client.on("interactionCreate", async (interaction) => {
       );
     }
 
-    const result = await dmAllMembers(interaction.guild, message, (progress) => {
-      if (progress.attempted % 10 === 0 || progress.done) {
-        console.log(
-          `[${interaction.guild.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.skipped} skipped / ${progress.total}`
-        );
-      }
-    });
+    const result = await dmAllMembers(
+      interaction.guild,
+      message,
+      (progress) => {
+        if (progress.attempted % 10 === 0 || progress.done) {
+          console.log(
+            `[${interaction.guild.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.alreadyMessaged} already done, ${progress.skipped} bots / ${progress.total}`
+          );
+        }
+      },
+      { reset }
+    );
 
     await interaction.editReply({
       content: [
         result.stoppedEarly
-          ? "DM broadcast **stopped early** (Discord is blocking further DMs — wait a few hours, then run again)."
+          ? "DM broadcast **stopped early** (Discord blocking). Wait a bit, then run `/dmall` again — already-sent members are skipped automatically."
           : "DM broadcast finished.",
         `• Members considered: **${result.total}**`,
-        `• Sent: **${result.sent}**`,
+        `• Sent this run: **${result.sent}**`,
+        `• Already messaged (skipped): **${result.alreadyMessaged}**`,
         `• Failed (DMs closed / blocked / rate limit): **${result.failed}**`,
         `• Skipped (bots): **${result.skipped}**`,
+        `• Pace: 50 DMs → **1 min** pause`,
+        reset ? "• Sent history was **reset** before this run" : null,
         channelNote,
       ]
         .filter(Boolean)
@@ -106,7 +115,7 @@ client.on("interactionCreate", async (interaction) => {
     const detail = err.message ?? String(err);
     const hint =
       detail.includes("Missing Permissions") || err.code === 50013
-        ? "\n\nFix in **Wave**: Server Settings → Roles → move the **maza** bot role up, allow **View Channels** / **Send Messages**. Or re-invite:\nhttps://discord.com/oauth2/authorize?client_id=1530253022557638778&permissions=269486112&scope=bot%20applications.commands\n\nThen try `/dmall` **without** the channel option first."
+        ? "\n\nFix bot **View Channel** + **Send Messages**, or run `/dmall` without the channel option."
         : "";
     await interaction.editReply({
       content: `Broadcast failed: ${detail}${hint}`,

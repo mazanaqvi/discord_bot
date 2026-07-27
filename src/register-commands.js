@@ -34,6 +34,12 @@ const commands = [
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
         .setRequired(false)
     )
+    .addBooleanOption((option) =>
+      option
+        .setName("reset")
+        .setDescription("Clear sent history and message everyone again from scratch")
+        .setRequired(false)
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON(),
 ];
