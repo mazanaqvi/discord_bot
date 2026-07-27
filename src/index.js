@@ -89,7 +89,9 @@ client.on("interactionCreate", async (interaction) => {
 
     await interaction.editReply({
       content: [
-        "DM broadcast finished.",
+        result.stoppedEarly
+          ? "DM broadcast **stopped early** (Discord is blocking further DMs — wait a few hours, then run again)."
+          : "DM broadcast finished.",
         `• Members considered: **${result.total}**`,
         `• Sent: **${result.sent}**`,
         `• Failed (DMs closed / blocked / rate limit): **${result.failed}**`,
