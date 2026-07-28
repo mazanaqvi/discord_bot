@@ -34,8 +34,62 @@ client.once(Events.ClientReady, (readyClient) => {
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName !== "dmall") return;
 
+  if (interaction.commandName === "dmc") {
+    await handleDmc(interaction);
+    return;
+  }
+
+  if (interaction.commandName === "dmall") {
+    await handleDmall(interaction);
+  }
+});
+
+async function handleDmc(interaction) {
+  if (!interaction.inGuild()) {
+    await interaction.reply({
+      content: "This command only works inside a server channel.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.SendMessages)) {
+    await interaction.reply({
+      content: "You need Send Messages permission to use this command.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  const message = interaction.options.getString("message", true);
+  const channel = interaction.channel;
+
+  if (!channel?.isTextBased()) {
+    await interaction.reply({
+      content: "This command must be used in a text channel.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  try {
+    await channel.send({ content: message.slice(0, 2000) });
+    await interaction.reply({
+      content: `Posted in ${channel}.`,
+      flags: MessageFlags.Ephemeral,
+    });
+  } catch (err) {
+    console.error(err);
+    await interaction.reply({
+      content:
+        "Could not post here. Give the bot **View Channel** + **Send Messages** in this channel.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+}
+
+async function handleDmall(interaction) {
   if (!interaction.inGuild()) {
     await interaction.reply({
       content: "This command only works inside a server.",
@@ -121,6 +175,6 @@ client.on("interactionCreate", async (interaction) => {
       content: `Broadcast failed: ${detail}${hint}`,
     });
   }
-});
+}
 
 client.login(token);

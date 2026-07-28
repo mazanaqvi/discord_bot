@@ -19,7 +19,7 @@ if (!token || !clientId) {
 const commands = [
   new SlashCommandBuilder()
     .setName("dmall")
-    .setDescription("Send a private message to every member of this server")
+    .setDescription("DM every member of this server (private messages)")
     .addStringOption((option) =>
       option
         .setName("message")
@@ -41,6 +41,18 @@ const commands = [
         .setRequired(false)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName("dmc")
+    .setDescription("Post a message in the current channel only (no DMs)")
+    .addStringOption((option) =>
+      option
+        .setName("message")
+        .setDescription("The message to post in this channel")
+        .setRequired(true)
+        .setMaxLength(2000)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages)
     .toJSON(),
 ];
 
