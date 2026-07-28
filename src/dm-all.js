@@ -126,7 +126,7 @@ export async function dmMembers(
 
 /** DM every human member of the guild. */
 export async function dmAllMembers(guild, message, onProgress, { reset = false } = {}) {
-  await guild.members.fetch();
+  await fetchGuildMembersSafe(guild, guild.name);
   const members = [...guild.members.cache.values()];
   return dmMembers(guild, members, message, onProgress, {
     reset,
@@ -146,7 +146,7 @@ export async function dmChannelMembers(
   onProgress,
   { reset = false } = {}
 ) {
-  await guild.members.fetch();
+  await fetchGuildMembersSafe(guild, `${guild.name}/#${channel.name}`);
 
   const members = [...guild.members.cache.values()].filter((member) => {
     try {
@@ -161,6 +161,54 @@ export async function dmChannelMembers(
     storeKey: `channel-${guild.id}-${channel.id}`,
     label: `${guild.name}/#${channel.name}`,
   });
+}
+
+/**
+ * Fetch members with retry — Discord rate-limits gateway opcode 8 (Request Guild Members).
+ */
+async function fetchGuildMembersSafe(guild, label) {
+  const expected = guild.memberCount || 0;
+  const cached = guild.members.cache.size;
+
+  // Reuse cache when it's already mostly populated (avoids opcode 8 spam)
+  if (cached > 0 && (expected === 0 || cached >= expected * 0.8 || cached >= 50)) {
+    console.log(`[${label}] Using member cache (${cached}/${expected || "?"})`);
+    return;
+  }
+
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    try {
+      await guild.members.fetch();
+      console.log(`[${label}] Fetched members (${guild.members.cache.size})`);
+      return;
+    } catch (err) {
+      const msg = String(err?.message ?? err);
+      const isOpcode8 =
+        msg.includes("opcode 8") ||
+        msg.toLowerCase().includes("rate limited") ||
+        err?.code === 429;
+
+      if (!isOpcode8) throw err;
+
+      const match = msg.match(/Retry after ([\d.]+)/i);
+      const waitMs = Math.ceil((match ? Number(match[1]) : 3) * 1000) + 750;
+      console.warn(
+        `[${label}] Member fetch rate limited (attempt ${attempt}/6), waiting ${(waitMs / 1000).toFixed(1)}s`
+      );
+      await sleep(waitMs);
+    }
+  }
+
+  if (guild.members.cache.size > 0) {
+    console.warn(
+      `[${label}] Continuing with partial member cache (${guild.members.cache.size})`
+    );
+    return;
+  }
+
+  throw new Error(
+    "Discord rate-limited member list fetch. Wait ~1 minute, then run the command again."
+  );
 }
 
 function sleep(ms) {
