@@ -7,7 +7,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import "dotenv/config";
-import { dmAllMembers } from "./dm-all.js";
+import { dmAllMembers, dmChannelMembers } from "./dm-all.js";
 
 const token = process.env.DISCORD_TOKEN;
 
@@ -54,15 +54,16 @@ async function handleDmc(interaction) {
     return;
   }
 
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.SendMessages)) {
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
     await interaction.reply({
-      content: "You need Send Messages permission to use this command.",
+      content: "You need Administrator permission to use this command.",
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
   const message = interaction.options.getString("message", true);
+  const reset = interaction.options.getBoolean("reset") ?? false;
   const channel = interaction.channel;
 
   if (!channel?.isTextBased()) {
@@ -73,18 +74,44 @@ async function handleDmc(interaction) {
     return;
   }
 
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   try {
-    await channel.send({ content: message.slice(0, 2000) });
-    await interaction.reply({
-      content: `Posted in ${channel}.`,
-      flags: MessageFlags.Ephemeral,
+    const result = await dmChannelMembers(
+      interaction.guild,
+      channel,
+      message,
+      (progress) => {
+        if (progress.attempted % 10 === 0 || progress.done) {
+          console.log(
+            `[${interaction.guild.name}/#${channel.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.alreadyMessaged} already done, ${progress.skipped} bots / ${progress.total}`
+          );
+        }
+      },
+      { reset }
+    );
+
+    await interaction.editReply({
+      content: [
+        result.stoppedEarly
+          ? "Channel DM run **stopped early** (Discord blocking). Wait, then run `/dmc` again — already-sent members are skipped."
+          : "Channel DM run finished.",
+        `• Channel: ${channel}`,
+        `• Members who can see this channel: **${result.total}**`,
+        `• Sent this run: **${result.sent}**`,
+        `• Already messaged (skipped): **${result.alreadyMessaged}**`,
+        `• Failed: **${result.failed}**`,
+        `• Skipped (bots): **${result.skipped}**`,
+        `• Pace: 50 DMs → **1 min** pause`,
+        reset ? "• Sent history was **reset** before this run" : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
     });
   } catch (err) {
     console.error(err);
-    await interaction.reply({
-      content:
-        "Could not post here. Give the bot **View Channel** + **Send Messages** in this channel.",
-      flags: MessageFlags.Ephemeral,
+    await interaction.editReply({
+      content: `Channel DM failed: ${err.message ?? String(err)}`,
     });
   }
 }

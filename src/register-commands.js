@@ -44,15 +44,23 @@ const commands = [
     .toJSON(),
   new SlashCommandBuilder()
     .setName("dmc")
-    .setDescription("Post a message in the current channel only (no DMs)")
+    .setDescription(
+      "DM members who can see the current channel (private messages, not a channel post)"
+    )
     .addStringOption((option) =>
       option
         .setName("message")
-        .setDescription("The message to post in this channel")
+        .setDescription("The message to DM each channel member")
         .setRequired(true)
         .setMaxLength(2000)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages)
+    .addBooleanOption((option) =>
+      option
+        .setName("reset")
+        .setDescription("Clear sent history for this channel and message them again")
+        .setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON(),
 ];
 

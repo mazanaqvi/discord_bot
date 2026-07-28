@@ -1,3 +1,4 @@
+import { PermissionFlagsBits } from "discord.js";
 import { loadSentIds, saveSentIds, clearSentIds } from "./sent-store.js";
 
 const BATCH_SIZE = 50;
@@ -5,21 +6,30 @@ const BATCH_PAUSE_MS = 60_000; // 1 minute between batches
 const PER_DM_DELAY_MS = 1500;
 
 /**
- * Send a DM to every human member of a guild.
- * - Skips members already messaged (resume-safe)
- * - After every 50 DMs, pauses 1 minute
- * - Backs off on rate limits / consecutive failures
+ * DM a list of guild members with batching + resume.
+ * @param {import('discord.js').Guild} guild
+ * @param {import('discord.js').GuildMember[]} members
+ * @param {string} message
+ * @param {(result: object) => void} [onProgress]
+ * @param {{ reset?: boolean, storeKey: string, label?: string }} options
  */
-export async function dmAllMembers(guild, message, onProgress, { reset = false } = {}) {
-  await guild.members.fetch();
-
-  if (reset) {
-    await clearSentIds(guild.id);
-    console.log(`[${guild.name}] Cleared sent history (reset=true)`);
+export async function dmMembers(
+  guild,
+  members,
+  message,
+  onProgress,
+  { reset = false, storeKey, label = guild.name } = {}
+) {
+  if (!storeKey) {
+    throw new Error("storeKey is required for DM resume tracking");
   }
 
-  const alreadySent = await loadSentIds(guild.id);
-  const members = [...guild.members.cache.values()];
+  if (reset) {
+    await clearSentIds(storeKey);
+    console.log(`[${label}] Cleared sent history (reset=true)`);
+  }
+
+  const alreadySent = await loadSentIds(storeKey);
 
   const result = {
     total: members.length,
@@ -61,20 +71,19 @@ export async function dmAllMembers(guild, message, onProgress, { reset = false }
       result.sent += 1;
       consecutiveFails = 0;
       alreadySent.add(member.id);
-      // Persist after each success so a restart can resume safely
-      await saveSentIds(guild.id, alreadySent);
+      await saveSentIds(storeKey, alreadySent);
     } catch (err) {
       result.failed += 1;
       consecutiveFails += 1;
 
       if (err?.status === 429 || err?.code === 429) {
         const wait = Number(err.retryAfter ?? err.rawError?.retry_after ?? 15) * 1000;
-        console.warn(`[${guild.name}] Rate limited, waiting ${Math.ceil(wait / 1000)}s`);
+        console.warn(`[${label}] Rate limited, waiting ${Math.ceil(wait / 1000)}s`);
         await sleep(Math.max(wait, 5000));
         consecutiveFails = 0;
       } else if (consecutiveFails >= 25) {
         console.warn(
-          `[${guild.name}] Stopping early after ${consecutiveFails} consecutive DM failures (likely Discord anti-spam). Sent ${result.sent} this run; ${alreadySent.size} total recorded.`
+          `[${label}] Stopping early after ${consecutiveFails} consecutive DM failures. Sent ${result.sent} this run; ${alreadySent.size} total recorded.`
         );
         result.stoppedEarly = true;
         result.attempted += 1;
@@ -91,7 +100,7 @@ export async function dmAllMembers(guild, message, onProgress, { reset = false }
 
     if (sinceBatchPause >= BATCH_SIZE && !result.stoppedEarly) {
       console.log(
-        `[${guild.name}] Batch of ${BATCH_SIZE} done — pausing 1 minute before next batch (sent this run: ${result.sent})`
+        `[${label}] Batch of ${BATCH_SIZE} done — pausing 1 minute (sent this run: ${result.sent})`
       );
       await sleep(BATCH_PAUSE_MS);
       sinceBatchPause = 0;
@@ -101,6 +110,45 @@ export async function dmAllMembers(guild, message, onProgress, { reset = false }
   result.done = true;
   onProgress?.(result);
   return result;
+}
+
+/** DM every human member of the guild. */
+export async function dmAllMembers(guild, message, onProgress, { reset = false } = {}) {
+  await guild.members.fetch();
+  const members = [...guild.members.cache.values()];
+  return dmMembers(guild, members, message, onProgress, {
+    reset,
+    storeKey: guild.id,
+    label: guild.name,
+  });
+}
+
+/**
+ * DM human members who can view the given channel.
+ * (Discord has no "channel member list" for text — this uses View Channel permission.)
+ */
+export async function dmChannelMembers(
+  guild,
+  channel,
+  message,
+  onProgress,
+  { reset = false } = {}
+) {
+  await guild.members.fetch();
+
+  const members = [...guild.members.cache.values()].filter((member) => {
+    try {
+      return channel.permissionsFor(member)?.has(PermissionFlagsBits.ViewChannel);
+    } catch {
+      return false;
+    }
+  });
+
+  return dmMembers(guild, members, message, onProgress, {
+    reset,
+    storeKey: `channel-${guild.id}-${channel.id}`,
+    label: `${guild.name}/#${channel.name}`,
+  });
 }
 
 function sleep(ms) {
