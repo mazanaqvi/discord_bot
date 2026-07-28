@@ -104,6 +104,7 @@ async function handleDmc(interaction) {
         `• Skipped (bots): **${result.skipped}**`,
         `• Pace: 50 DMs → **1 min** pause`,
         reset ? "• Sent history was **reset** before this run" : null,
+        ...formatFailureDetails(result),
       ]
         .filter(Boolean)
         .join("\n"),
@@ -187,6 +188,7 @@ async function handleDmall(interaction) {
         `• Pace: 50 DMs → **1 min** pause`,
         reset ? "• Sent history was **reset** before this run" : null,
         channelNote,
+        ...formatFailureDetails(result),
       ]
         .filter(Boolean)
         .join("\n"),
@@ -205,3 +207,12 @@ async function handleDmall(interaction) {
 }
 
 client.login(token);
+
+function formatFailureDetails(result) {
+  if (!result.failed || !result.failureSamples?.length) return [];
+  return [
+    "",
+    "**Why DMs failed (samples):**",
+    ...result.failureSamples.map((s) => `• ${s}`),
+  ];
+}

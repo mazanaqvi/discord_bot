@@ -40,6 +40,8 @@ export async function dmMembers(
     attempted: 0,
     done: false,
     stoppedEarly: false,
+    failureSamples: [],
+    failureReasons: {},
   };
 
   let consecutiveFails = 0;
@@ -75,6 +77,16 @@ export async function dmMembers(
     } catch (err) {
       result.failed += 1;
       consecutiveFails += 1;
+
+      const reason =
+        err?.rawError?.message ||
+        err?.message ||
+        `HTTP ${err?.status ?? err?.code ?? "unknown"}`;
+      result.failureReasons[reason] = (result.failureReasons[reason] ?? 0) + 1;
+      if (result.failureSamples.length < 5) {
+        result.failureSamples.push(`${name}: ${reason}`);
+      }
+      console.warn(`[${label}] DM failed for ${name} (${member.id}): ${reason}`);
 
       if (err?.status === 429 || err?.code === 429) {
         const wait = Number(err.retryAfter ?? err.rawError?.retry_after ?? 15) * 1000;
