@@ -63,7 +63,6 @@ async function handleDmc(interaction) {
   }
 
   const message = interaction.options.getString("message", true);
-  const reset = interaction.options.getBoolean("reset") ?? false;
   const channel = interaction.channel;
 
   if (!channel?.isTextBased()) {
@@ -84,26 +83,24 @@ async function handleDmc(interaction) {
       (progress) => {
         if (progress.attempted % 10 === 0 || progress.done) {
           console.log(
-            `[${interaction.guild.name}/#${channel.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.alreadyMessaged} already done, ${progress.skipped} bots / ${progress.total}`
+            `[${interaction.guild.name}/#${channel.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.alreadyMessaged} cooldown, ${progress.skipped} bots / ${progress.total}`
           );
         }
-      },
-      { reset }
+      }
     );
 
     await interaction.editReply({
       content: [
         result.stoppedEarly
-          ? "Channel DM run **stopped early** (Discord blocking). Wait, then run `/dmc` again — already-sent members are skipped."
+          ? "Channel DM run **stopped early** (Discord blocking). Wait, then run `/dmc` again."
           : "Channel DM run finished.",
         `• Channel: ${channel}`,
         `• Members who can see this channel: **${result.total}**`,
         `• Sent this run: **${result.sent}**`,
-        `• Already messaged (skipped): **${result.alreadyMessaged}**`,
+        `• Skipped (messaged within last **2 hours**): **${result.alreadyMessaged}**`,
         `• Failed: **${result.failed}**`,
         `• Skipped (bots): **${result.skipped}**`,
         `• Pace: **2s**/DM, **20** DMs → **15s** pause`,
-        reset ? "• Sent history was **reset** before this run" : null,
         ...formatFailureDetails(result),
       ]
         .filter(Boolean)
@@ -136,7 +133,6 @@ async function handleDmall(interaction) {
 
   const message = interaction.options.getString("message", true);
   const channel = interaction.options.getChannel("channel");
-  const reset = interaction.options.getBoolean("reset") ?? false;
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -168,25 +164,23 @@ async function handleDmall(interaction) {
       (progress) => {
         if (progress.attempted % 10 === 0 || progress.done) {
           console.log(
-            `[${interaction.guild.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.alreadyMessaged} already done, ${progress.skipped} bots / ${progress.total}`
+            `[${interaction.guild.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.alreadyMessaged} cooldown, ${progress.skipped} bots / ${progress.total}`
           );
         }
-      },
-      { reset }
+      }
     );
 
     await interaction.editReply({
       content: [
         result.stoppedEarly
-          ? "DM broadcast **stopped early** (Discord blocking). Wait a bit, then run `/dmall` again — already-sent members are skipped automatically."
+          ? "DM broadcast **stopped early** (Discord blocking). Wait a bit, then run `/dmall` again."
           : "DM broadcast finished.",
         `• Members considered: **${result.total}**`,
         `• Sent this run: **${result.sent}**`,
-        `• Already messaged (skipped): **${result.alreadyMessaged}**`,
+        `• Skipped (messaged within last **2 hours**): **${result.alreadyMessaged}**`,
         `• Failed (DMs closed / blocked / rate limit): **${result.failed}**`,
         `• Skipped (bots): **${result.skipped}**`,
         `• Pace: **2s**/DM, **20** DMs → **15s** pause`,
-        reset ? "• Sent history was **reset** before this run" : null,
         channelNote,
         ...formatFailureDetails(result),
       ]

@@ -34,12 +34,6 @@ const commands = [
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
         .setRequired(false)
     )
-    .addBooleanOption((option) =>
-      option
-        .setName("reset")
-        .setDescription("Clear sent history and message everyone again from scratch")
-        .setRequired(false)
-    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON(),
   new SlashCommandBuilder()
@@ -53,12 +47,6 @@ const commands = [
         .setDescription("The message to DM each channel member")
         .setRequired(true)
         .setMaxLength(2000)
-    )
-    .addBooleanOption((option) =>
-      option
-        .setName("reset")
-        .setDescription("Clear sent history for this channel and message them again")
-        .setRequired(false)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON(),
