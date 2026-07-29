@@ -1,5 +1,10 @@
 import { PermissionFlagsBits } from "discord.js";
-import { loadRecentSent, markSent, DM_COOLDOWN_MS } from "./sent-store.js";
+import {
+  loadRecentSent,
+  markSent,
+  clearSent,
+  DM_COOLDOWN_MS,
+} from "./sent-store.js";
 
 const BATCH_SIZE = 20;
 const BATCH_PAUSE_MS = 15_000; // 15 seconds between batches
@@ -12,17 +17,22 @@ const MAX_CONSECUTIVE_FAILS = 10;
  * @param {import('discord.js').GuildMember[]} members
  * @param {string} message
  * @param {(result: object) => void} [onProgress]
- * @param {{ storeKey: string, label?: string }} options
+ * @param {{ reset?: boolean, storeKey: string, label?: string }} options
  */
 export async function dmMembers(
   guild,
   members,
   message,
   onProgress,
-  { storeKey, label = guild.name } = {}
+  { reset = false, storeKey, label = guild.name } = {}
 ) {
   if (!storeKey) {
     throw new Error("storeKey is required for DM cooldown tracking");
+  }
+
+  if (reset) {
+    await clearSent(storeKey);
+    console.log(`[${label}] Cleared 2-hour cooldown list (reset=true)`);
   }
 
   const recentSent = await loadRecentSent(storeKey);
@@ -121,10 +131,11 @@ export async function dmMembers(
 }
 
 /** DM every human member of the guild. */
-export async function dmAllMembers(guild, message, onProgress) {
+export async function dmAllMembers(guild, message, onProgress, { reset = false } = {}) {
   await fetchGuildMembersSafe(guild, guild.name);
   const members = [...guild.members.cache.values()];
   return dmMembers(guild, members, message, onProgress, {
+    reset,
     storeKey: guild.id,
     label: guild.name,
   });
@@ -134,7 +145,13 @@ export async function dmAllMembers(guild, message, onProgress) {
  * DM human members who can view the given channel.
  * (Discord has no "channel member list" for text — this uses View Channel permission.)
  */
-export async function dmChannelMembers(guild, channel, message, onProgress) {
+export async function dmChannelMembers(
+  guild,
+  channel,
+  message,
+  onProgress,
+  { reset = false } = {}
+) {
   await fetchGuildMembersSafe(guild, `${guild.name}/#${channel.name}`);
 
   const members = [...guild.members.cache.values()].filter((member) => {
@@ -146,6 +163,7 @@ export async function dmChannelMembers(guild, channel, message, onProgress) {
   });
 
   return dmMembers(guild, members, message, onProgress, {
+    reset,
     storeKey: `channel-${guild.id}-${channel.id}`,
     label: `${guild.name}/#${channel.name}`,
   });

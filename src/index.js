@@ -63,6 +63,7 @@ async function handleDmc(interaction) {
   }
 
   const message = interaction.options.getString("message", true);
+  const reset = interaction.options.getBoolean("reset") ?? false;
   const channel = interaction.channel;
 
   if (!channel?.isTextBased()) {
@@ -86,7 +87,8 @@ async function handleDmc(interaction) {
             `[${interaction.guild.name}/#${channel.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.alreadyMessaged} cooldown, ${progress.skipped} bots / ${progress.total}`
           );
         }
-      }
+      },
+      { reset }
     );
 
     await interaction.editReply({
@@ -101,6 +103,7 @@ async function handleDmc(interaction) {
         `• Failed: **${result.failed}**`,
         `• Skipped (bots): **${result.skipped}**`,
         `• Pace: **2s**/DM, **20** DMs → **15s** pause`,
+        reset ? "• **2-hour cooldown was cleared** (reset: True)" : null,
         ...formatFailureDetails(result),
       ]
         .filter(Boolean)
@@ -133,6 +136,7 @@ async function handleDmall(interaction) {
 
   const message = interaction.options.getString("message", true);
   const channel = interaction.options.getChannel("channel");
+  const reset = interaction.options.getBoolean("reset") ?? false;
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -167,7 +171,8 @@ async function handleDmall(interaction) {
             `[${interaction.guild.name}] DM progress: ${progress.sent} sent, ${progress.failed} failed, ${progress.alreadyMessaged} cooldown, ${progress.skipped} bots / ${progress.total}`
           );
         }
-      }
+      },
+      { reset }
     );
 
     await interaction.editReply({
@@ -181,6 +186,7 @@ async function handleDmall(interaction) {
         `• Failed (DMs closed / blocked / rate limit): **${result.failed}**`,
         `• Skipped (bots): **${result.skipped}**`,
         `• Pace: **2s**/DM, **20** DMs → **15s** pause`,
+        reset ? "• **2-hour cooldown was cleared** (reset: True)" : null,
         channelNote,
         ...formatFailureDetails(result),
       ]

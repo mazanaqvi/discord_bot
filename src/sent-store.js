@@ -35,6 +35,10 @@ export async function markSent(storeKey, recentMap, userId) {
   await saveEntries(storeKey, Object.fromEntries(recentMap));
 }
 
+export async function clearSent(storeKey) {
+  await saveEntries(storeKey, {});
+}
+
 async function readEntries(storeKey) {
   try {
     const raw = await readFile(storePath(storeKey), "utf8");

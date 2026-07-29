@@ -34,6 +34,12 @@ const commands = [
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
         .setRequired(false)
     )
+    .addBooleanOption((option) =>
+      option
+        .setName("reset")
+        .setDescription("Clear the 2-hour cooldown and message everyone again now")
+        .setRequired(false)
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON(),
   new SlashCommandBuilder()
@@ -47,6 +53,12 @@ const commands = [
         .setDescription("The message to DM each channel member")
         .setRequired(true)
         .setMaxLength(2000)
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("reset")
+        .setDescription("Clear the 2-hour cooldown for this channel and message again now")
+        .setRequired(false)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON(),
