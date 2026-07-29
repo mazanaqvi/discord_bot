@@ -102,7 +102,7 @@ async function handleDmc(interaction) {
         `• Already messaged (skipped): **${result.alreadyMessaged}**`,
         `• Failed: **${result.failed}**`,
         `• Skipped (bots): **${result.skipped}**`,
-        `• Pace: 50 DMs → **1 min** pause`,
+        `• Pace: **2s**/DM, **20** DMs → **15s** pause`,
         reset ? "• Sent history was **reset** before this run" : null,
         ...formatFailureDetails(result),
       ]
@@ -185,7 +185,7 @@ async function handleDmall(interaction) {
         `• Already messaged (skipped): **${result.alreadyMessaged}**`,
         `• Failed (DMs closed / blocked / rate limit): **${result.failed}**`,
         `• Skipped (bots): **${result.skipped}**`,
-        `• Pace: 50 DMs → **1 min** pause`,
+        `• Pace: **2s**/DM, **20** DMs → **15s** pause`,
         reset ? "• Sent history was **reset** before this run" : null,
         channelNote,
         ...formatFailureDetails(result),

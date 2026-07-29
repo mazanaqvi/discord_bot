@@ -1,9 +1,10 @@
 import { PermissionFlagsBits } from "discord.js";
 import { loadSentIds, saveSentIds, clearSentIds } from "./sent-store.js";
 
-const BATCH_SIZE = 50;
-const BATCH_PAUSE_MS = 60_000; // 1 minute between batches
-const PER_DM_DELAY_MS = 1500;
+const BATCH_SIZE = 20;
+const BATCH_PAUSE_MS = 15_000; // 15 seconds between batches
+const PER_DM_DELAY_MS = 2000; // 2 seconds between DMs
+const MAX_CONSECUTIVE_FAILS = 10;
 
 /**
  * DM a list of guild members with batching + resume.
@@ -93,7 +94,7 @@ export async function dmMembers(
         console.warn(`[${label}] Rate limited, waiting ${Math.ceil(wait / 1000)}s`);
         await sleep(Math.max(wait, 5000));
         consecutiveFails = 0;
-      } else if (consecutiveFails >= 25) {
+      } else if (consecutiveFails >= MAX_CONSECUTIVE_FAILS) {
         console.warn(
           `[${label}] Stopping early after ${consecutiveFails} consecutive DM failures. Sent ${result.sent} this run; ${alreadySent.size} total recorded.`
         );
@@ -112,7 +113,7 @@ export async function dmMembers(
 
     if (sinceBatchPause >= BATCH_SIZE && !result.stoppedEarly) {
       console.log(
-        `[${label}] Batch of ${BATCH_SIZE} done — pausing 1 minute (sent this run: ${result.sent})`
+        `[${label}] Batch of ${BATCH_SIZE} done — pausing ${BATCH_PAUSE_MS / 1000}s (sent this run: ${result.sent})`
       );
       await sleep(BATCH_PAUSE_MS);
       sinceBatchPause = 0;
