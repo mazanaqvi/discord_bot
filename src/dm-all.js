@@ -5,6 +5,7 @@ import {
   clearSent,
   DM_COOLDOWN_MS,
 } from "./sent-store.js";
+import { formatMessage } from "./format-message.js";
 
 const BATCH_SIZE = 20;
 const BATCH_PAUSE_MS = 15_000; // 15 seconds between batches
@@ -36,6 +37,7 @@ export async function dmMembers(
   }
 
   const recentSent = await loadRecentSent(storeKey);
+  const body = formatMessage(message);
 
   const result = {
     total: members.length,
@@ -73,7 +75,7 @@ export async function dmMembers(
       member.displayName ||
       member.user.globalName ||
       member.user.username;
-    const personalized = `Hi, ${name},\n\n${message}`.slice(0, 2000);
+    const personalized = `Hi, ${name},\n\n${body}`.slice(0, 2000);
 
     try {
       await member.send(personalized);

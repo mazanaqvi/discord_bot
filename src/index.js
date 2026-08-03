@@ -8,6 +8,7 @@ import {
 } from "discord.js";
 import "dotenv/config";
 import { dmAllMembers, dmChannelMembers } from "./dm-all.js";
+import { formatMessage } from "./format-message.js";
 
 const token = process.env.DISCORD_TOKEN;
 
@@ -145,7 +146,10 @@ async function handleDmall(interaction) {
     if (channel?.isTextBased()) {
       try {
         await channel.send({
-          content: `📢 Broadcast started by ${interaction.user}:\n${message}`,
+          content: `📢 Broadcast started by ${interaction.user}:\n${formatMessage(message)}`.slice(
+            0,
+            2000
+          ),
         });
         channelNote = `• Also posted in: ${channel}`;
       } catch (channelErr) {
